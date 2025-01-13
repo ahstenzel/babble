@@ -21,26 +21,46 @@ static std::string generateWord(unsigned int length) {
 			double scalar = pair.second;
 
 			for (unsigned int j = 0; j < 26; ++j) {
+				if (weights[j] < 0) { continue; }
 				char c = (char)j + 'a';
-				double weight = (double)modifier->getWeightForLetter(c, word, wordLength) * scalar;
-				weights[j] += (int)round(weight);
+				int weight = modifier->getWeightForLetter(c, word, wordLength);
+				if (weight < 0) {
+					weights[j] = -1;
+				}
+				else {
+					weights[j] += (int)round((double)weight * scalar);
+				}
 			}
 		}
 
 		// Randomly determine based on weights
-		int sum = 0;
-		std::for_each(weights.begin(), weights.end(), [&](const unsigned int& n) { sum += n; });
-		int distance = (int)round(Random::uniformRand() * (double)sum);
-		for (unsigned int j = 0; j < 26; ++j) {
-			int weight = weights[j];
-			if (weight < 0) { continue; }
-			distance -= weight;
-			if (distance < 0) {
-				char c = (char)j + 'a';
-				word.push_back(c);
-				break;
+		char c = ' ';
+		while (c == ' ') {
+			// Get total weight
+			int sum = 0;
+			std::for_each(weights.begin(), weights.end(), [&](const unsigned int& n) { 
+				// If a weight is marked negative, that letter is disabled
+				if (n > 0) { sum += n; }
+			});
+			if (sum == 0) {
+				std::cerr << "Failed to generate word, invalid weights!" << std::endl;
+				return std::string();
+			}
+
+			// Make a weighted choice
+			int distance = (int)round(Random::uniformRand() * (double)sum);
+			for (unsigned int j = 0; j < 26; ++j) {
+				int weight = weights[j];
+				if (weight < 0) { continue; }
+				distance -= weight;
+				if (distance < 0) {
+					c = (char)j + 'a';
+					break;
+				}
 			}
 		}
+		assertm(c >= 'a' && c <= 'z', "Letter is invalid!");
+		word.push_back(c);
 	}
 	return word;
 }
